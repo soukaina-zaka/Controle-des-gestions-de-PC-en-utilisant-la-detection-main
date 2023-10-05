@@ -1,0 +1,195 @@
+[10:03, 05/10/2023] Soukaina Zaka: import cv2
+import mediapipe as mp
+
+
+
+cap = cv2.VideoCapture(0)
+
+mpHands = mp.solutions.hands
+hands = mpHands.Hands()
+mpDraw = mp.solutions.drawing_utils
+tipIds = [4, 8, 12, 16, 20]
+
+while True:
+    success, img = cap.read()
+    img = cv2.flip(img, 1)
+
+    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    results = hands.process(imgRGB)
+
+    lmList = []
+
+    if results.multi_hand_landmarks:
+        for handLms in results.multi_hand_landmarks:
+            for id, lm in enumerate(handLms.landmark):
+                h, w, c = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                lmList.append([id, cx, cy])
+                mpDraw.draw_landmarks(img, handLms, mpHands.HAND_CONNECTIONS)
+
+                #if id == 8:
+       …
+[10:03, 05/10/2023] Soukaina Zaka: ## Salar Brefki
+import cv2
+import mediapipe as mp
+from math import hypot
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+import numpy as np
+import math
+import time
+
+
+
+
+cap = cv2.VideoCapture(0)
+
+mpHands = mp.solutions.hands
+hands = mpHands.Hands()
+mpDraw = mp.solutions.drawing_utils
+tipIds = [4, 8, 12, 16, 20]
+
+while True:
+    success, img = cap.read()
+    img = cv2.flip(img, 1)
+
+    imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    results = hands.process(imgRGB)
+
+    lmList = []
+    a=0
+    if results.multi_hand_landmarks:
+        for handLms in results.multi_hand_landmarks:
+            for id, lm in enumerate(handLms.landmark):
+                h, w, c = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                lmList.append([id, cx, cy])
+                mpDraw.draw_landmarks(img, handLms, mpHands.HAND_CONNECTIONS)
+
+                #if id == 8:
+                    #cv2.circle(img, (cx, cy), 20, (0, 255, 0), cv2.FILLED)
+
+                if len(lmList) == 21:
+                    fingers = []
+
+                    if lmList[tipIds[0]][1] < lmList[tipIds[0] - 2][1]:
+                        fingers.append(1)
+                    else:
+                        fingers.append(0)
+
+                    for tip in range(1, 5):
+                        if lmList[tipIds[tip]][2] < lmList[tipIds[tip] - 2][2]:
+                            fingers.append(1)
+                        else:
+                            fingers.append(0)
+
+                    totalFingers = fingers.count(1)
+                    print(totalFingers)
+                    cv2.putText(img, f'{totalFingers}', (40, 80), cv2.FONT_HERSHEY_SIMPLEX,
+                                3, (0, 0, 255), 6)
+                    if totalFingers == 1:
+                        a=0
+                        cv2.putText(img, "One Finger Detected", (40, 150), cv2.FONT_HERSHEY_SIMPLEX,
+                                    2, (0, 255, 0), 5)
+                        mpHands = mp.solutions.hands  # detects hand/finger
+                        hands = mpHands.Hands()  # complete the initialization configuration of hands
+                        mpDraw = mp.solutions.drawing_utils
+
+                        # To access speaker through the library pycaw
+                        devices = AudioUtilities.GetSpeakers()
+                        interface = devices.Activate(IAudioEndpointVolume.iid, CLSCTX_ALL, None)
+                        volume = cast(interface, POINTER(IAudioEndpointVolume))
+                        volbar = 400
+                        volper = 0
+
+                        volMin, volMax = volume.GetVolumeRange()[:2]
+
+                        while True:
+                            success, img = cap.read()  # If camera works capture an image
+                            imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to rgb
+
+                            # Collection of gesture information
+                            results = hands.process(imgRGB)  # completes the image processing.
+
+                            lmList = []  # empty list
+                            if results.multi_hand_landmarks:  # list of all hands detected.
+                                # By accessing the list, we can get the information of each hand's corresponding flag bit
+                                for handlandmark in results.multi_hand_landmarks:
+                                    for id, lm in enumerate(handlandmark.landmark):  # adding counter and returning it
+                                        # Get finger joint points
+                                        h, w, _ = img.shape
+                                        cx, cy = int(lm.x * w), int(lm.y * h)
+                                        lmList.append([id, cx, cy])  # adding to the empty list 'lmList'
+                                    mpDraw.draw_landmarks(img, handlandmark, mpHands.HAND_CONNECTIONS)
+
+                            if lmList != []:
+                                # getting the value at a point
+                                # x      #y
+                                x1, y1 = lmList[4][1], lmList[4][2]  # thumb
+                                x2, y2 = lmList[8][1], lmList[8][2]  # index finger
+                                x3, y3 = lmList[1][1], lmList[1][2]
+                                P1 = (x1, y1)
+                                P2 = (x2, y2)
+                                P3 = (x3, y3)
+
+                                # creating circle at the tips of thumb and index finger
+                                cv2.circle(img, (x1, y1), 13, (255, 0, 0), cv2.FILLED)  # image #fingers #radius #rgb
+                                cv2.circle(img, (x2, y2), 13, (255, 0, 0), cv2.FILLED)  # image #fingers #radius #rgb
+                                cv2.circle(img, (x3, y3), 13, (255, 0, 0), cv2.FILLED)
+                                cv2.line(img, (x1, y1), (x3, y3), (255, 0, 0),
+                                         3)  # create a line b/w tips of index finger and thumb
+                                cv2.line(img, (x2, y2), (x3, y3), (255, 0, 0), 3)
+
+
+                                def calculate_angle(point1, point2, point3):
+                                    # Calculate the vectors between the points
+                                    vector1 = (point1[0] - point2[0], point1[1] - point2[1])
+                                    vector2 = (point3[0] - point2[0], point3[1] - point2[1])
+
+                                    # Calculate the dot product of the vectors
+                                    dot_product = vector1[0] * vector2[0] + vector1[1] * vector2[1]
+
+                                    # Calculate the magnitudes of the vectors
+                                    magnitude1 = math.sqrt(vector1[0] * 2 + vector1[1] * 2)
+                                    magnitude2 = math.sqrt(vector2[0] * 2 + vector2[1] * 2)
+
+                                    # Calculate the angle between the vectors using the arc tangent function
+                                    angle_radians = math.acos(dot_product / (magnitude1 * magnitude2))
+
+                                    # Convert the angle from radians to degrees
+                                    angle_degrees = math.degrees(angle_radians)
+
+                                    return angle_degrees
+
+
+                                angle = calculate_angle(P1, P3, P2)
+                                # from numpy we find our length,by converting hand range in terms of volume range ie b/w -63.5 to 0
+                                vol = np.interp(angle, [5, 60], [volMin, volMax])
+                                volbar = np.interp(angle, [5, 60], [400, 150])
+                                volper = np.interp(angle, [5, 60], [0, 100])
+                                # img = cv2.flip(img, 1)
+
+                                print(vol, int(angle))
+                                volume.SetMasterVolumeLevel(vol, None)
+
+                                # Hand range 30 - 350
+                                # Volume range -63.5 - 0.0
+                                # creating volume bar for volume level
+                                cv2.rectangle(img, (50, 150), (85, 400), (0, 0, 255),
+                                              4)  # vid ,initial position ,ending position ,rgb ,thickness
+                                cv2.rectangle(img, (50, int(volbar)), (85, 400), (0, 0, 255), cv2.FILLED)
+                                cv2.putText(img, f"{int(volper)}%", (10, 40), cv2.FONT_ITALIC, 1, (0, 255, 98), 3)
+                                # tell the volume percentage ,location,font of text,length,rgb color,thickness
+                            cv2.imshow('handhh', img)  # Show the video
+                            a=a+1
+
+                            if cv2.waitKey(1) & a == 50:  # By using spacebar delay will stop
+                                break
+                                a=0
+
+    cv2.imshow('handhh', img)
+    if cv2.waitKey(1) & 0xff == ord(' '):
+        break
